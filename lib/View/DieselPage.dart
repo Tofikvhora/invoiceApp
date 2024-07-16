@@ -1,39 +1,46 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:newmahirroadways/Widget/CommonAppBar.dart';
+import 'package:newmahirroadways/provider/ImagePicker.dart';
 import 'package:newmahirroadways/provider/diesleProvider.dart';
 import 'package:provider/provider.dart';
 
+import '../Services/DatabaseServices.dart';
+
 class DieselPage extends HookWidget {
+  String pdfName = "";
   static const String route = 'DieselPage';
-  const DieselPage({super.key});
+  DieselPage({super.key, required this.pdfName});
 
   @override
   Widget build(BuildContext context) {
+    final DatabaseServices db = DatabaseServices();
+    final firestore = FirebaseFirestore.instance;
+
+    final auth = FirebaseAuth.instance;
     final _srController = useTextEditingController();
     final _amount = useTextEditingController();
     final _liters = useTextEditingController();
     final _date = useTextEditingController();
     final _vehicle = useTextEditingController();
     final notifier = Provider.of<DieselProvider>(context);
+    final isPop = useState(false);
+    final pickerNotifier = Provider.of<ImagePickerProvider>(context);
+    useEffect(() {
+      return () {
+        notifier.srNO = 1;
+      };
+    }, []);
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        centerTitle: true,
-        shadowColor: Colors.black,
-        elevation: 10,
-        title: Text(
-          'Diesel',
-          style: TextStyle(
-              fontSize: 18.sp,
-              color: Colors.black,
-              fontWeight: FontWeight.bold),
-        ),
-      ),
       body: Column(
         children: [
+          commonAppBar(context),
           Expanded(
             child: ListView(
+              padding: EdgeInsets.zero,
               children: [
                 Row(
                   children: [
@@ -183,10 +190,16 @@ class DieselPage extends HookWidget {
                                       fontWeight: FontWeight.bold)),
                             ),
                             TextFormField(
+                              onTap: () {
+                                pickerNotifier.dateTimePickerDi(context);
+                              },
+                              readOnly: true,
                               keyboardType: TextInputType.datetime,
                               controller: _date,
                               decoration: InputDecoration(
-                                hintText: 'Date Ex : May 1',
+                                hintText: pickerNotifier.formattedDateDi == ""
+                                    ? 'Date Ex : May 1'
+                                    : pickerNotifier.formattedDateDi,
                                 hintStyle: TextStyle(
                                     fontSize: 15.sp,
                                     color: Colors.black.withOpacity(0.4),
@@ -260,7 +273,6 @@ class DieselPage extends HookWidget {
               return InkWell(
                 onTap: () {
                   if (_vehicle.text.isEmpty ||
-                      _date.text.isEmpty ||
                       _liters.text.isEmpty ||
                       _amount.text.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -280,20 +292,26 @@ class DieselPage extends HookWidget {
                     notifier.srNOFunctions();
                     notifier.totalFunction(_amount);
                     notifier.totalLiters(_liters);
-                    value.addAllData(
+                    db
+                        .dieselInvoice(
                       notifier.srNO - 1,
                       _amount,
                       _liters,
-                      _date,
+                      pickerNotifier.formattedDateDi.toString(),
                       _vehicle,
                       context,
-                    );
-                    Future.delayed(const Duration(microseconds: 100), () {
-                      _srController.clear();
-                      _liters.clear();
-                      _amount.clear();
-                      _date.clear();
-                      _vehicle.clear();
+                    )
+                        .then((value) {
+                      db
+                          .saveInvoiceDiesel(
+                              notifier.srNO - 1,
+                              _amount,
+                              _liters,
+                              pickerNotifier.formattedDateDi.toString(),
+                              _vehicle,
+                              pdfName.toString(),
+                              context)
+                          .then((value) => pickerNotifier.formattedDateDi = "");
                     });
                   }
                 },

@@ -5,14 +5,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:newmahirroadways/Services/DatabaseServices.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-import '../Services/DatabaseServices.dart';
-
-class PdfPage {
+class SavePdfPage {
   final firestore = FirebaseFirestore.instance;
   final fAuth = FirebaseAuth.instance;
   final DatabaseServices db = DatabaseServices();
@@ -22,7 +21,7 @@ class PdfPage {
     'vehicle No',
     'From',
     'To',
-    "feet",
+    'feet',
     'Hold',
     'Amount',
     "Payment",
@@ -45,12 +44,14 @@ class PdfPage {
 
   static Future<Uint8List> generate(
     BuildContext cont,
+    List<List> table,
+    List<List> diTable,
     String companyName,
     String companyAddress,
     String companyNumber,
     String companyEmail,
     int total,
-    int feet,
+    int labour,
     int days,
     String billDate,
     int diTotalAmount,
@@ -60,18 +61,6 @@ class PdfPage {
     final firestore = FirebaseFirestore.instance;
 
     final auth = FirebaseAuth.instance;
-    QuerySnapshot querySnapshot = await firestore
-        .collection("InvoiceData")
-        .doc(auth.currentUser!.email.toString())
-        .collection("InvoiceList")
-        .get();
-    QuerySnapshot querySnapshotDiesel = await firestore
-        .collection("InvoiceData")
-        .doc(auth.currentUser!.email.toString())
-        .collection("DieselInvoiceList")
-        .get();
-
-    final List<QueryDocumentSnapshot> data = querySnapshot.docs;
     final double totalTableWidth = PdfPageFormat.letter.width - 2 * 0.5;
     final double column1Width = totalTableWidth * 0.09; // 15% of total width
     final double column2Width = totalTableWidth * 0.09; // 15% of total width
@@ -80,13 +69,6 @@ class PdfPage {
     final double column5Width = totalTableWidth * 0.1; // 15% of total width
     final double column6Width = totalTableWidth * 0.04; // 15% of total width
     final double column7Width = totalTableWidth * 0.09; // 15% of total width
-
-    List<List> tableData = [
-      for (var doc in querySnapshot.docs) doc["AllData"],
-    ];
-    List<List> dieselData = [
-      for (var doc in querySnapshotDiesel.docs) doc["AllData"]
-    ];
 
     final pdf = pw.Document();
     pdf.addPage(pw.Page(
@@ -120,19 +102,19 @@ class PdfPage {
                         fontSize: 17.sp,
                       )),
                 ]),
-            tableData.isEmpty ? pw.SizedBox() : pw.SizedBox(height: 10.h),
+            table.isEmpty ? pw.SizedBox() : pw.SizedBox(height: 10.h),
             pw.Expanded(
               child: pw.Column(
                   mainAxisAlignment: pw.MainAxisAlignment.start,
                   crossAxisAlignment: pw.CrossAxisAlignment.end,
                   children: [
                     pw.SizedBox(height: 10.h),
-                    tableData.isEmpty
+                    table.isEmpty
                         ? pw.SizedBox()
                         : pw.Table.fromTextArray(
-                            data: tableData,
+                            data: table,
                             headers: headers,
-                            cellHeight: 25,
+                            cellHeight: 20.h,
                             cellPadding:
                                 const pw.EdgeInsets.symmetric(horizontal: 2),
                             border: null,
@@ -170,15 +152,13 @@ class PdfPage {
                               color: PdfColors.black,
                             ),
                           ),
-                    tableData.isEmpty
-                        ? pw.SizedBox()
-                        : pw.SizedBox(height: 10.h),
-                    tableData.isEmpty
+                    table.isEmpty ? pw.SizedBox() : pw.SizedBox(height: 10.h),
+                    table.isEmpty
                         ? pw.SizedBox()
                         : pw.Divider(
                             color: PdfColors.black, height: 10, thickness: 1),
                     pw.SizedBox(height: 1.h),
-                    tableData.isEmpty
+                    table.isEmpty
                         ? pw.SizedBox()
                         : pw.Row(
                             mainAxisAlignment: pw.MainAxisAlignment.end,
@@ -189,19 +169,22 @@ class PdfPage {
                                       fontWeight: pw.FontWeight.bold,
                                       fontSize: 14.sp,
                                     )),
+                                // pw.Text('TOTAl LABOUR CHARGES : $labour',
+                                //     textAlign: pw.TextAlign.center,
+                                //     style: pw.TextStyle(
+                                //       fontSize: 9.sp,
+                                //     )),
                                 // pw.Text('TOTAl Hold in Days : $days day',
                                 //     textAlign: pw.TextAlign.center,
                                 //     style: pw.TextStyle(
                                 //       fontSize: 9.sp,
                                 //     )),
                               ]),
-                    tableData.isEmpty
-                        ? pw.SizedBox()
-                        : pw.SizedBox(height: 20.h),
-                    dieselData.isEmpty
+                    table.isEmpty ? pw.SizedBox() : pw.SizedBox(height: 20.h),
+                    diTable.isEmpty
                         ? pw.SizedBox()
                         : pw.Table.fromTextArray(
-                            data: dieselData,
+                            data: diTable,
                             headers: diHeaders,
                             cellHeight: 20,
                             cellPadding:
@@ -233,15 +216,13 @@ class PdfPage {
                               color: PdfColors.green600,
                             ),
                           ),
-                    dieselData.isEmpty
-                        ? pw.SizedBox()
-                        : pw.SizedBox(height: 10.h),
-                    dieselData.isEmpty
+                    diTable.isEmpty ? pw.SizedBox() : pw.SizedBox(height: 10.h),
+                    diTable.isEmpty
                         ? pw.SizedBox()
                         : pw.Divider(
                             color: PdfColors.black, height: 10, thickness: 1),
                     pw.SizedBox(height: 1.h),
-                    dieselData.isEmpty
+                    diTable.isEmpty
                         ? pw.SizedBox()
                         : pw.Row(
                             mainAxisAlignment:
